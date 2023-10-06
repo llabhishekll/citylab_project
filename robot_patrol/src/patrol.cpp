@@ -4,9 +4,27 @@
 
 class Patrol : public rclcpp::Node {
 private:
+  // ros object
+  rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr subscriber_scan;
+  sensor_msgs::msg::LaserScan::SharedPtr scan_prime;
+
+  // member method
+  void subscriber_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+    this->scan_prime = msg;
+    RCLCPP_INFO(this->get_logger(), "LaserScan (%f, %f, %f)", msg->ranges[180], msg->ranges[360], msg->ranges[540]);
+  }
+
 public:
+  // constructor
   Patrol() : Node("robot_patrol_node") {
-    RCLCPP_INFO(this->get_logger(), "The robot_patrol_node started successfully");
+    // ros object
+    subscriber_scan = this->create_subscription<sensor_msgs::msg::LaserScan>(
+        "scan", 10,
+        std::bind(&Patrol::subscriber_callback, this, std::placeholders::_1));
+
+    // node acknowledgement
+    RCLCPP_INFO(this->get_logger(),
+                "The robot_patrol_node started successfully");
   }
 };
 
