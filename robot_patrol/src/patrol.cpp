@@ -6,6 +6,11 @@ class Patrol : public rclcpp::Node {
 private:
   // member variables
   int direction_;
+  float l_dist;
+  float c_dist;
+  float r_dist;
+  float l_view_dist;
+  float r_view_dist;
 
   // ros objects
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr subscriber_scan;
@@ -21,6 +26,13 @@ private:
     std::vector<float> range_prime(l_pos - f_pos + 1);
     std::copy(f_pos, l_pos, range_prime.begin());
 
+    // calculate distance
+    this->l_dist = range_prime[360];
+    this->l_view_dist = range_prime[198]; // 81
+    this->c_dist = range_prime[180];      // 90
+    this->r_view_dist = range_prime[162]; // 99
+    this->r_dist = range_prime[0];
+
     // fill infinity with zero
     std::replace(range_prime.begin(), range_prime.end(),
                  std::numeric_limits<double>::infinity(), 0.0);
@@ -30,11 +42,11 @@ private:
     auto max_pos = std::distance(range_prime.begin(), max_value);
 
     // calculate angle
-    this->direction_ = (180 - max_pos) / 2;
+    this->direction_ = (max_pos - 180) / 2;
 
     // subscriber feedback
-    RCLCPP_INFO(this->get_logger(), "LaserScan (L%f, M%f, R%f)",
-                range_prime[360], range_prime[180], range_prime[0]);
+    RCLCPP_INFO(this->get_logger(), "LaserScan (L%f, M%f, R%f)", this->l_dist,
+                this->c_dist, this->r_dist);
     RCLCPP_INFO(this->get_logger(), "MaxElement (%d, %f) Angle (%d)", max_pos,
                 *max_value, this->direction_);
   }
@@ -42,7 +54,7 @@ private:
 public:
   // constructor
   Patrol() : Node("robot_patrol_node") {
-    // ros object
+    // ros objects
     subscriber_scan = this->create_subscription<sensor_msgs::msg::LaserScan>(
         "/scan", 10,
         std::bind(&Patrol::subscriber_callback, this, std::placeholders::_1));
