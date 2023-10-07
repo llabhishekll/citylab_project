@@ -14,6 +14,7 @@ private:
 
   // ros objects
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr subscriber_scan;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_cmd_vel;
 
   // member method
   void subscriber_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
@@ -58,7 +59,8 @@ public:
     subscriber_scan = this->create_subscription<sensor_msgs::msg::LaserScan>(
         "/scan", 10,
         std::bind(&Patrol::subscriber_callback, this, std::placeholders::_1));
-
+    publisher_cmd_vel =
+        this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
     // node acknowledgement
     RCLCPP_INFO(this->get_logger(),
                 "The robot_patrol_node started successfully");
