@@ -2,6 +2,9 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 
+#define GAMMA 0.45
+#define X_VEL 0.10
+
 class Patrol : public rclcpp::Node {
 private:
   // member variables
@@ -14,6 +17,7 @@ private:
   // ros objects
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr subscriber_scan;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_cmd_vel;
+  rclcpp::TimerBase::SharedPtr timer_robot_control;
 
   // member method
   void subscriber_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
@@ -55,15 +59,38 @@ private:
                 *max_value, this->direction_);
   }
 
+  void timer_robot_control_callback() {
+    // publishing velocity to the topic /cmd_vel
+    auto message = geometry_msgs::msg::Twist();
+    // control structure
+    if ((this->min_value < GAMMA)) {
+      message.linear.x = 0;
+      message.angular.z = ((M_PI / 180) * this->direction_) / 2;
+    } else {
+      message.linear.x = X_VEL;
+      message.angular.z = 0;
+    }
+    // publisher feedback
+    RCLCPP_INFO(this->get_logger(), "Velocity (L%f, A%f)", message.linear.x,
+                message.angular.z);
+    // publish velocity
+    publisher_cmd_vel->publish(message);
+  }
+
 public:
   // constructor
   Patrol() : Node("robot_patrol_node") {
     // ros objects
-    this->subscriber_scan = this->create_subscription<sensor_msgs::msg::LaserScan>(
-        "/scan", 10,
-        std::bind(&Patrol::subscriber_callback, this, std::placeholders::_1));
+    this->subscriber_scan =
+        this->create_subscription<sensor_msgs::msg::LaserScan>(
+            "/scan", 10,
+            std::bind(&Patrol::subscriber_callback, this,
+                      std::placeholders::_1));
     this->publisher_cmd_vel =
         this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
+    this->timer_robot_control = this->create_wall_timer(
+        std::chrono::milliseconds(100),
+        std::bind(&Patrol::timer_robot_control_callback, this));
     // node acknowledgement
     RCLCPP_INFO(this->get_logger(),
                 "The robot_patrol_node started successfully");
