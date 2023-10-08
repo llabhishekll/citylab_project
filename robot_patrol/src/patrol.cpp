@@ -9,8 +9,7 @@ private:
   float l_dist;
   float c_dist;
   float r_dist;
-  float l_view_dist;
-  float r_view_dist;
+  float min_value;
 
   // ros objects
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr subscriber_scan;
@@ -28,11 +27,15 @@ private:
     std::copy(f_pos, l_pos, range_prime.begin());
 
     // calculate distance
-    this->l_dist = range_prime[360];
-    this->l_view_dist = range_prime[198]; // 81
-    this->c_dist = range_prime[180];      // 90
-    this->r_view_dist = range_prime[162]; // 99
-    this->r_dist = range_prime[0];
+    this->l_dist = range_prime[360]; // 180
+    this->c_dist = range_prime[180]; // 90
+    this->r_dist = range_prime[0];   // 0
+
+    // find min position
+    auto min_f_pos = range_prime.begin() + 156; // 78
+    auto min_l_pos = range_prime.begin() + 204; // 102
+    auto min_value = std::min_element(min_f_pos, min_l_pos);
+    this->min_value = *min_value;
 
     // fill infinity with zero
     std::replace(range_prime.begin(), range_prime.end(),
@@ -56,10 +59,10 @@ public:
   // constructor
   Patrol() : Node("robot_patrol_node") {
     // ros objects
-    subscriber_scan = this->create_subscription<sensor_msgs::msg::LaserScan>(
+    this->subscriber_scan = this->create_subscription<sensor_msgs::msg::LaserScan>(
         "/scan", 10,
         std::bind(&Patrol::subscriber_callback, this, std::placeholders::_1));
-    publisher_cmd_vel =
+    this->publisher_cmd_vel =
         this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
     // node acknowledgement
     RCLCPP_INFO(this->get_logger(),
