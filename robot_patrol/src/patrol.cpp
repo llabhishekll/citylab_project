@@ -14,6 +14,10 @@ private:
   float r_dist;
   float min_value;
 
+  // callback groups
+  rclcpp::CallbackGroup::SharedPtr callback_g1;
+  rclcpp::CallbackGroup::SharedPtr callback_g2;
+
   // ros objects
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr subscriber_scan;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_cmd_vel;
@@ -62,6 +66,7 @@ private:
   void timer_robot_control_callback() {
     // publishing velocity to the topic /cmd_vel
     auto message = geometry_msgs::msg::Twist();
+
     // control structure
     if ((this->min_value < GAMMA)) {
       message.linear.x = 0;
@@ -70,9 +75,11 @@ private:
       message.linear.x = X_VEL;
       message.angular.z = 0;
     }
+
     // publisher feedback
     RCLCPP_INFO(this->get_logger(), "Velocity (L%f, A%f)", message.linear.x,
                 message.angular.z);
+
     // publish velocity
     publisher_cmd_vel->publish(message);
   }
@@ -80,17 +87,27 @@ private:
 public:
   // constructor
   Patrol() : Node("robot_patrol_node") {
+    // callback groups objects
+    callback_g1 = this->create_callback_group(
+        rclcpp::CallbackGroupType::MutuallyExclusive);
+    callback_g2 = this->create_callback_group(
+        rclcpp::CallbackGroupType::MutuallyExclusive);
+
     // ros objects
+    rclcpp::SubscriptionOptions sub_callback_g1;
+    sub_callback_g1.callback_group = callback_g1;
     this->subscriber_scan =
         this->create_subscription<sensor_msgs::msg::LaserScan>(
             "/scan", 10,
             std::bind(&Patrol::subscriber_callback, this,
-                      std::placeholders::_1));
+                      std::placeholders::_1),
+            sub_callback_g1);
     this->publisher_cmd_vel =
         this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
     this->timer_robot_control = this->create_wall_timer(
         std::chrono::milliseconds(100),
-        std::bind(&Patrol::timer_robot_control_callback, this));
+        std::bind(&Patrol::timer_robot_control_callback, this), callback_g2);
+
     // node acknowledgement
     RCLCPP_INFO(this->get_logger(),
                 "The robot_patrol_node started successfully");
@@ -98,8 +115,16 @@ public:
 };
 
 int main(int argc, char *argv[]) {
+  // initialize ros, executor and node
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<Patrol>());
+  rclcpp::executors::MultiThreadedExecutor executor;
+  std::shared_ptr<Patrol> node = std::make_shared<Patrol>();
+
+  // add node to executor and spin
+  executor.add_node(node);
+  executor.spin();
+
+  // shutdown
   rclcpp::shutdown();
   return 0;
 }
