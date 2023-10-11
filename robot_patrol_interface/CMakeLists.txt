@@ -20,12 +20,14 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED) 
 find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 # build interface
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetDirection.srv"
-  DEPENDENCIES std_msgs sensor_msgs  # CRITICAL
+  "action/GoToPose.action"
+  DEPENDENCIES std_msgs sensor_msgs geometry_msgs # CRITICAL
 )
 
 if(BUILD_TESTING)
