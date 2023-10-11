@@ -20,13 +20,22 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(robot_patrol_interface REQUIRED)
 
 # build
 add_executable(robot_patrol_node src/patrol.cpp)
 ament_target_dependencies(robot_patrol_node rclcpp sensor_msgs geometry_msgs)
 
+add_executable(direction_service_node src/direction_service.cpp)
+ament_target_dependencies(direction_service_node rclcpp robot_patrol_interface)
+
+add_executable(test_service_node src/test_service.cpp)
+ament_target_dependencies(test_service_node rclcpp robot_patrol_interface)
+
 # install
 install(TARGETS robot_patrol_node DESTINATION lib/${PROJECT_NAME})
+install(TARGETS direction_service_node DESTINATION lib/${PROJECT_NAME})
+install(TARGETS test_service_node DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
 
 if(BUILD_TESTING)
